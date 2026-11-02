@@ -633,6 +633,11 @@ async function initCache(clearSel) {
         $id("cache-list").appendChild(note("Cache scan failed: " + e, "error-note"));
         return;
     }
+    if (!info) {
+        $id("cache-list").innerHTML = "";
+        $id("cache-list").appendChild(note("Cache scan returned no data.", "error-note"));
+        return;
+    }
     cacheState = info.entries || [];
     const list = $id("cache-list");
     list.innerHTML = "";
