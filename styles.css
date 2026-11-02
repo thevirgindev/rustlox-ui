@@ -923,7 +923,64 @@ select option { background: var(--panel); color: var(--text); }
     color: var(--muted-foreground); font-size: 12px;
 }
 
-.hidden { display: none !important; }
+/* ============ immersive play mode ============ */
+
+body.playing #sidebar {
+    width: 56px;
+    min-width: 56px;
+    padding: 12px 6px;
+    transition: width .2s ease, padding .2s ease;
+}
+body.playing #sidebar:hover {
+    width: 232px;
+    padding: 14px 10px 12px;
+}
+body.playing #sidebar .logo-text,
+body.playing #sidebar .nav-item span,
+body.playing #sidebar .sidebar-footer > div:last-child {
+    opacity: 0;
+    transition: opacity .15s;
+    pointer-events: none;
+}
+body.playing #sidebar:hover .logo-text,
+body.playing #sidebar:hover .nav-item span,
+body.playing #sidebar:hover .sidebar-footer > div:last-child {
+    opacity: 1;
+    pointer-events: auto;
+}
+body.playing .nav-item {
+    justify-content: center;
+    padding: 9px 0;
+}
+body.playing #sidebar:hover .nav-item {
+    justify-content: flex-start;
+    padding: 8px 10px;
+}
+body.playing .nav-item.active::before { display: none; }
+
+/* Floating exit pill */
+.play-exit-pill {
+    position: fixed;
+    top: 12px; right: 16px;
+    z-index: 95;
+    display: flex; align-items: center; gap: 8px;
+    background: oklch(0.205 0 0 / 90%);
+    border: 1px solid oklch(1 0 0 / 12%);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    backdrop-filter: blur(8px);
+    font-size: 12px; font-weight: 500; color: var(--foreground);
+    cursor: pointer; transition: background .12s, border-color .12s;
+    animation: pillin .2s ease;
+}
+@keyframes pillin { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.play-exit-pill:hover { background: oklch(0.269 0 0 / 95%); border-color: oklch(1 0 0 / 20%); }
+.play-exit-pill .pill-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 0 3px oklch(0.7 0.18 145 / 20%);
+}
+.play-exit-pill.hidden { display: none; }
 
 @media (max-width: 900px) {
     .modal-body { grid-template-columns: 1fr; }

@@ -318,7 +318,8 @@ async function launchGame(g) {
     }
     $id("pb-undock").textContent = "Pop Out";
     document.body.classList.add("playing");
-    await invoke("set_layout", { sidebarPx: 224, topbarPx: 0 });
+    $id("play-exit-pill").classList.remove("hidden");
+    await invoke("set_layout", { sidebarPx: 56, topbarPx: 0 });
 }
 
 async function pollStatus() {
@@ -330,6 +331,7 @@ async function pollStatus() {
             $id("pb-sub").textContent = `running inside Rustlox · pid ${st.pid}`;
         } else if (!st.embedded) {
             document.body.classList.remove("playing");
+            $id("play-exit-pill").classList.add("hidden");
             await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
         }
     } catch (e) { /* transient */ }
@@ -373,6 +375,16 @@ async function setupPlayEvents() {
         }
         await invoke("detach_game").catch(() => {});
         $id("play-bar").classList.add("hidden");
+        document.body.classList.remove("playing");
+        $id("play-exit-pill").classList.add("hidden");
+        await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
+        clearInterval(statusTimer);
+    });
+
+    $id("play-exit-pill").addEventListener("click", async () => {
+        await invoke("detach_game").catch(() => {});
+        $id("play-bar").classList.add("hidden");
+        $id("play-exit-pill").classList.add("hidden");
         document.body.classList.remove("playing");
         await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
         clearInterval(statusTimer);
