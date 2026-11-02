@@ -584,7 +584,8 @@ async function saveFastflags() {
 // ============ account cookie ============
 
 async function loadCookieStatus() {
-    const st = await invoke("get_cookie_status").catch(() => ({ linked: false, username: null }));
+    const r = await invoke("get_cookie_status").catch(() => ({ linked: false, username: null }));
+    const st = r || { linked: false, username: null };
     const badge = $id("user-badge");
     const name = $id("user-name");
     const status = $id("cookie-status");
