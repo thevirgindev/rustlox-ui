@@ -536,15 +536,16 @@ const PRESETS = {
 };
 
 async function loadFastflags() {
-    ffState = await invoke("get_fastflags").catch(() => []);
+    const r = await invoke("get_fastflags").catch(() => []);
+    ffState = Array.isArray(r) ? r : [];
     renderFastflags();
 }
 
 function renderFastflags() {
     const list = $id("fastflags-list");
     list.innerHTML = "";
-    if (!ffState.length) list.appendChild(note("No FastFlags configured."));
-    for (const [idx, f] of ffState.entries()) {
+    if (!ffState || !ffState.length) list.appendChild(note("No FastFlags configured."));
+    for (const [idx, f] of (ffState || []).entries()) {
         const row = el("div", "ff-row");
         const sw = el("label", "switch");
         const inp = document.createElement("input");
@@ -698,6 +699,143 @@ function setupRefresh() {
     });
 }
 
+// ============ command palette (Ctrl+K) ============
+
+let cmdSelected = -1;
+let cmdResults = [];
+let cmdDebounce = null;
+
+function setupCommandPalette() {
+    const palette = $id("cmd-palette");
+    const input = $id("cmd-input");
+    const results = $id("cmd-results");
+
+    document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+            e.preventDefault();
+            toggleCmdPalette();
+        }
+        if (e.key === "Escape" && !palette.classList.contains("hidden")) {
+            closeCmdPalette();
+        }
+    });
+
+    palette.querySelector(".cmd-backdrop").addEventListener("click", closeCmdPalette);
+
+    input.addEventListener("input", () => {
+        clearTimeout(cmdDebounce);
+        const q = input.value.trim();
+        if (q.length < 2) {
+            cmdResults = [];
+            renderCmdResults();
+            return;
+        }
+        cmdDebounce = setTimeout(() => runCmdSearch(q), 250);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            cmdSelected = Math.min(cmdSelected + 1, cmdResults.length - 1);
+            renderCmdResults();
+            scrollCmdSelected();
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            cmdSelected = Math.max(cmdSelected - 1, 0);
+            renderCmdResults();
+            scrollCmdSelected();
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (cmdSelected >= 0 && cmdResults[cmdSelected]) {
+                openGame(cmdResults[cmdSelected]);
+                closeCmdPalette();
+            }
+        }
+    });
+}
+
+function toggleCmdPalette() {
+    const palette = $id("cmd-palette");
+    if (palette.classList.contains("hidden")) {
+        openCmdPalette();
+    } else {
+        closeCmdPalette();
+    }
+}
+
+function openCmdPalette() {
+    const palette = $id("cmd-palette");
+    const input = $id("cmd-input");
+    palette.classList.remove("hidden");
+    input.value = "";
+    cmdResults = [];
+    cmdSelected = -1;
+    renderCmdResults();
+    setTimeout(() => input.focus(), 50);
+    invoke("get_sort_games", { sortId: "top-trending" }).then((page) => {
+        if (page && page.games && page.games.length) {
+            cmdResults = page.games.slice(0, 8);
+            renderCmdResults();
+        }
+    }).catch(() => {});
+}
+
+function closeCmdPalette() {
+    $id("cmd-palette").classList.add("hidden");
+    $id("cmd-input").value = "";
+    cmdResults = [];
+    cmdSelected = -1;
+}
+
+async function runCmdSearch(q) {
+    try {
+        const page = await invoke("search_games", { query: q });
+        cmdResults = (page.games || []).slice(0, 10);
+        cmdSelected = cmdResults.length > 0 ? 0 : -1;
+        renderCmdResults();
+    } catch (e) {
+        cmdResults = [];
+        renderCmdResults();
+    }
+}
+
+function renderCmdResults() {
+    const container = $id("cmd-results");
+    container.innerHTML = "";
+    if (!cmdResults.length) {
+        container.innerHTML = '<div class="cmd-empty">No games found. Try a different search.</div>';
+        return;
+    }
+    cmdResults.forEach((g, i) => {
+        const item = el("div", "cmd-item" + (i === cmdSelected ? " active" : ""));
+        item.innerHTML = `
+            <img class="cmd-item-thumb" alt="" src="${g.thumbnail_url || ""}">
+            <div class="cmd-item-info">
+                <div class="cmd-item-name"></div>
+                <div class="cmd-item-meta"></div>
+            </div>
+            ${g.playing > 0 ? `<span class="cmd-item-playing">${fmt(g.playing)}</span>` : ""}
+        `;
+        item.querySelector(".cmd-item-name").textContent = g.name || "Untitled";
+        item.querySelector(".cmd-item-meta").textContent = g.creator || "verified creator";
+        item.addEventListener("click", () => {
+            openGame(g);
+            closeCmdPalette();
+        });
+        item.addEventListener("mouseenter", () => {
+            cmdSelected = i;
+            renderCmdResults();
+        });
+        container.appendChild(item);
+    });
+}
+
+function scrollCmdSelected() {
+    const container = $id("cmd-results");
+    const active = container.querySelector(".cmd-item.active");
+    if (active) active.scrollIntoView({ block: "nearest" });
+}
+
 // ============ boot ============
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -707,6 +845,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupRefresh();
     setupPlayEvents();
     setupSettings();
+    setupCommandPalette();
     await loadHome();
     await loadSettings();
     await loadFastflags();

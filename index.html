@@ -272,6 +272,23 @@
         </div>
     </div>
 
+    <!-- Command Palette (Ctrl+K) -->
+    <div id="cmd-palette" class="cmd-palette hidden">
+        <div class="cmd-backdrop"></div>
+        <div class="cmd-box">
+            <div class="cmd-input-wrap">
+                <svg class="cmd-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="cmd-input" placeholder="Search any game, or type a command..." autocomplete="off" />
+                <kbd class="cmd-kbd">ESC</kbd>
+            </div>
+            <div class="cmd-results" id="cmd-results"></div>
+            <div class="cmd-footer">
+                <span><kbd>↑↓</kbd> navigate</span>
+                <span><kbd>↵</kbd> open</span>
+                <span><kbd>esc</kbd> close</span>
+            </div>
+        </div>
+    </div>
     <!-- Game Detail Modal -->
     <div id="game-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
