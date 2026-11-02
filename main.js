@@ -148,19 +148,20 @@ async function loadHome() {
     }
 
     if (d) {
-        $id("stat-players").textContent = d.live_players;
-        $id("stat-players-sub").textContent = `across ${d.sorts_loaded} live rows`;
-        $id("stat-topgame").textContent = d.largest_game || "--";
-        $id("stat-topgame-sub").textContent =
+        const sp = $id("stat-players"); if (sp) sp.textContent = d.live_players;
+        const sps = $id("stat-players-sub"); if (sps) sps.textContent = `across ${d.sorts_loaded} live rows`;
+        const stg = $id("stat-topgame"); if (stg) stg.textContent = d.largest_game || "--";
+        const stgs = $id("stat-topgame-sub"); if (stgs) stgs.textContent =
             d.largest_players > 0 ? fmt(d.largest_players) + " in the crowd right now" : "waiting on the crowd";
-        $id("stat-sorts").textContent = d.sorts_loaded;
-        const pct = d.largest_players > 0
-            ? Math.round((d.largest_players / parseCount(d.live_players)) * 100)
-            : 0;
-        $id("stat-ring-val").textContent = Math.min(pct, 100) + "%";
-        const ring = $id("stat-ring");
-        ring.style.strokeDashoffset = 251.2 * (1 - Math.min(pct, 100) / 100);
-        ring.style.stroke = pct > 25 ? "#5eead4" : "#fbbf24";
+        const ss = $id("stat-sorts"); if (ss) ss.textContent = d.sorts_loaded;
+        const ring = $id("stat-ring"); if (ring) {
+            const pct = d.largest_players > 0
+                ? Math.round((d.largest_players / parseCount(d.live_players)) * 100)
+                : 0;
+            const rv = $id("stat-ring-val"); if (rv) rv.textContent = Math.min(pct, 100) + "%";
+            ring.style.strokeDashoffset = 251.2 * (1 - Math.min(pct, 100) / 100);
+            ring.style.stroke = pct > 25 ? "#5eead4" : "#fbbf24";
+        }
     }
 }
 
