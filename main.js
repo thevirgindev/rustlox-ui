@@ -190,7 +190,7 @@ async function loadDiscover() {
     skeleton(grid, 11);
     tabs.innerHTML = "";
 
-    const rows = (await invoke("get_sorts").catch(() => [])).concat(SORT_OVERRIDE);
+    const rows = (await invoke("get_sorts").catch(() => []) || []).concat(SORT_OVERRIDE);
     const seen = new Set();
     const tabsList = rows.filter((r) => r.id && !seen.has(r.id) && seen.add(r.id));
 
@@ -212,7 +212,7 @@ async function selectSort(id, btn) {
     skeleton(grid, 11);
     try {
         const page = await invoke("get_sort_games", { sortId: id });
-        renderGrid(grid, page.games);
+        renderGrid(grid, (page && page.games) || []);
     } catch (e) {
         failGrid(grid, "Category failed: " + e);
     }
@@ -247,7 +247,7 @@ async function runSearch(q) {
     skeleton(grid, 9);
     try {
         const page = await invoke("search_games", { query: q });
-        renderGrid(grid, page.games);
+        renderGrid(grid, (page && page.games) || []);
     } catch (e) {
         failGrid(grid, "Search failed: " + e);
     }
@@ -382,7 +382,8 @@ async function setupPlayEvents() {
 // ============ mods ============
 
 async function loadMods() {
-    const mods = await invoke("get_mods").catch(() => []);
+    const r = await invoke("get_mods").catch(() => []);
+    const mods = Array.isArray(r) ? r : [];
     const grid = $id("mods-grid");
     grid.innerHTML = "";
     if (!mods.length) {
@@ -470,7 +471,7 @@ function setupSettings() {
 }
 
 async function loadSettings() {
-    const s = await invoke("get_settings").catch(null || {});
+    const s = await invoke("get_settings").catch(() => ({}));
     if (!s) return;
     $id("fps-cap").value = s.fps_cap || 0;
     $id("graphics-quality").value = s.graphics_quality ?? 5;
