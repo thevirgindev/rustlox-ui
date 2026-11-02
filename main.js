@@ -1,4 +1,4 @@
-// main.js - Prism frontend
+// main.js - Refract frontend
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -300,7 +300,7 @@ async function launchGame(g) {
     lastLaunchedName = g.name;
     showOverlay("Refracting the crowd...", "minting a join ticket");
     $id("pb-name").textContent = "Connecting...";
-    $id("pb-sub").textContent = "running inside Prism";
+    $id("pb-sub").textContent = "running inside Refract";
     $id("play-bar").classList.remove("hidden", "pb-dead");
 
     const r = await invoke("launch_game", { placeId: g.place_id, gameName: g.name }).catch((e) => ({
@@ -326,7 +326,7 @@ async function pollStatus() {
         if (st.embedded && st.alive) {
             $id("pb-dot").classList.add("live");
             $id("pb-name").textContent = st.name || "Playing";
-            $id("pb-sub").textContent = `running inside Prism · pid ${st.pid}`;
+            $id("pb-sub").textContent = `running inside Refract · pid ${st.pid}`;
         } else if (!st.embedded) {
             document.body.classList.remove("playing");
             await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
@@ -339,7 +339,7 @@ async function setupPlayEvents() {
         hideOverlay();
         $id("pb-dot").classList.add("live");
         $id("pb-name").textContent = "Player docked";
-        $id("pb-sub").textContent = "running inside Prism";
+        $id("pb-sub").textContent = "running inside Refract";
         document.body.classList.add("playing");
         clearInterval(statusTimer);
         statusTimer = setInterval(pollStatus, 3000);
@@ -348,7 +348,7 @@ async function setupPlayEvents() {
                 invoke("update_presence", {
                     info: {
                         state: "In a game",
-                        details: "Prism · " + lastLaunchedName,
+                        details: "Refract · " + lastLaunchedName,
                         large_image: "https://cdn.roblox.com/",
                         large_text: lastLaunchedName,
                         small_image: null,
