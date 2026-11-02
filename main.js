@@ -1,4 +1,4 @@
-// main.js - Refract frontend
+// main.js - Rustlox frontend
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -298,9 +298,9 @@ function hideOverlay() {
 async function launchGame(g) {
     closeModal();
     lastLaunchedName = g.name;
-    showOverlay("Refracting the crowd...", "minting a join ticket");
+    showOverlay("Rustloxing the crowd...", "minting a join ticket");
     $id("pb-name").textContent = "Connecting...";
-    $id("pb-sub").textContent = "running inside Refract";
+    $id("pb-sub").textContent = "running inside Rustlox";
     $id("play-bar").classList.remove("hidden", "pb-dead");
 
     const r = await invoke("launch_game", { placeId: g.place_id, gameName: g.name }).catch((e) => ({
@@ -326,7 +326,7 @@ async function pollStatus() {
         if (st.embedded && st.alive) {
             $id("pb-dot").classList.add("live");
             $id("pb-name").textContent = st.name || "Playing";
-            $id("pb-sub").textContent = `running inside Refract · pid ${st.pid}`;
+            $id("pb-sub").textContent = `running inside Rustlox · pid ${st.pid}`;
         } else if (!st.embedded) {
             document.body.classList.remove("playing");
             await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
@@ -339,7 +339,7 @@ async function setupPlayEvents() {
         hideOverlay();
         $id("pb-dot").classList.add("live");
         $id("pb-name").textContent = "Player docked";
-        $id("pb-sub").textContent = "running inside Refract";
+        $id("pb-sub").textContent = "running inside Rustlox";
         document.body.classList.add("playing");
         clearInterval(statusTimer);
         statusTimer = setInterval(pollStatus, 3000);
@@ -348,7 +348,7 @@ async function setupPlayEvents() {
                 invoke("update_presence", {
                     info: {
                         state: "In a game",
-                        details: "Refract · " + lastLaunchedName,
+                        details: "Rustlox · " + lastLaunchedName,
                         large_image: "https://cdn.roblox.com/",
                         large_text: lastLaunchedName,
                         small_image: null,

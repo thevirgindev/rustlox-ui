@@ -1,6 +1,6 @@
-# Refract UI
+# Rustlox UI
 
-Frontend for the Refract Roblox launcher (Tauri 2 + vanilla HTML/CSS/JS).
+Frontend for the Rustlox Roblox launcher (Tauri 2 + vanilla HTML/CSS/JS).
 
 ## Files
 - `index.html` - views, modal, play bar, launch overlay
