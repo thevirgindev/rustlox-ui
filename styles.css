@@ -1,24 +1,49 @@
-/* styles.css - Rustlox: product-grade dark launcher. Steam/Epic density, one accent. */
+/* styles.css - Rustlox: product-grade dark launcher. Basecoat UI (shadcn/ui) design system. */
+/* Basecoat CSS provides component base styles. This file adds app-specific layouts. */
 
 :root {
-    --bg: #1b1b1f;
-    --panel: #202025;
-    --card: #26262c;
-    --card-hover: #2d2d34;
-    --line: #33333a;
-    --line-soft: #2a2a31;
-    --text: #e8e8ec;
-    --dim: #9a9aa3;
-    --faint: #66666e;
-    --accent: #3b82f6;
-    --accent-hi: #60a5fa;
-    --accent-soft: #3b82f61a;
+    /* Basecoat dark theme tokens (oklch color system) */
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.6 0.18 250);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.6 0.18 250);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.6 0.18 250);
+    --radius: 0.5rem;
     --live: #22c55e;
-    --red: #ef4444;
+
+    /* App-specific tokens (derived from Basecoat) */
+    --bg: var(--background);
+    --panel: var(--card);
+    --card-hover: oklch(0.23 0 0);
+    --text: var(--foreground);
+    --dim: var(--muted-foreground);
+    --faint: oklch(0.5 0 0);
+    --accent-hi: oklch(0.7 0.18 250);
+    --accent-soft: oklch(0.6 0.18 250 / 15%);
+    --red: var(--destructive);
+    --line: var(--border);
+    --line-soft: var(--border);
     --sidebar-w: 232px;
     --top-h: 52px;
-    --r: 6px;
-    --r-lg: 8px;
+    --r: var(--radius);
+    --r-lg: calc(var(--radius) + 0.125rem);
+}
+
+.dark {
+    color-scheme: dark;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,7 +52,7 @@ html, body {
     height: 100%;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;

@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rustlox</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="basecoat.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -149,7 +150,7 @@
                 <div id="view-mods" class="view">
                     <div class="view-header"><h1>Mods</h1><p>Custom textures, fonts and gear - dropped straight into the client</p></div>
                     <div class="mods-toolbar">
-                        <button id="mod-add-file" class="btn-secondary">Add mod file...</button>
+                        <button id="mod-add-file" class="btn btn-secondary">Add mod file...</button>
                     </div>
                     <div class="mods-grid" id="mods-grid"></div>
                 </div>
@@ -164,8 +165,8 @@
                                 <label>.ROBLOSECURITY cookie</label>
                                 <div class="cookie-entry">
                                     <input type="password" id="cookie-input" placeholder="paste your .ROBLOSECURITY value" autocomplete="off">
-                                    <button id="save-cookie" class="btn-primary">Link</button>
-                                    <button id="clear-cookie" class="btn-ghost">Unlink</button>
+                                    <button id="save-cookie" class="btn">Link</button>
+                                    <button id="clear-cookie" class="btn btn-ghost">Unlink</button>
                                 </div>
                                 <div class="cookie-status" id="cookie-status">account not linked</div>
                             </div>
@@ -218,14 +219,14 @@
                             </div>
                             <div id="fastflags-list" class="fastflags-list"></div>
                             <div class="ff-actions">
-                                <button id="apply-fflags" class="btn-primary">Apply FastFlags</button>
+                                <button id="apply-fflags" class="btn">Apply FastFlags</button>
                             </div>
                         </div>
 
                         <div class="settings-section">
                             <h3>Cache</h3>
                             <div id="cache-list" class="cache-list"></div>
-                            <div class="ff-actions"><button id="clear-cache-btn" class="btn-secondary">Clear selected cache</button></div>
+                            <div class="ff-actions"><button id="clear-cache-btn" class="btn btn-secondary">Clear selected cache</button></div>
                         </div>
 
                         <div class="settings-section">
@@ -234,7 +235,7 @@
                                 <label>Rich Presence</label>
                                 <label class="switch"><input type="checkbox" id="discord-rpc" checked><span class="knob"></span></label>
                             </div>
-                            <button id="connect-discord" class="btn-secondary">Connect to Discord</button>
+                            <button id="connect-discord" class="btn btn-secondary">Connect to Discord</button>
                         </div>
 
                         <div class="settings-section">
@@ -244,7 +245,7 @@
                         </div>
 
                         <div class="settings-actions">
-                            <button id="save-settings" class="btn-primary">Save Settings</button>
+                            <button id="save-settings" class="btn">Save Settings</button>
                         </div>
                     </div>
                 </div>
@@ -259,7 +260,7 @@
             <span class="pb-title" id="pb-name">Connecting...</span>
             <span class="pb-sub" id="pb-sub">running inside Rustlox</span>
         </div>
-        <button id="pb-undock" class="btn-ghost">Pop Out</button>
+        <button id="pb-undock" class="btn btn-ghost">Pop Out</button>
     </div>
 
     <!-- Launch overlay -->
@@ -288,12 +289,13 @@
                         <div class="stat"><span class="stat-value" id="modal-favorites">0</span><span class="stat-label">Favorites</span></div>
                         <div class="stat"><span class="stat-value" id="modal-ratio">0</span><span class="stat-label">% Like</span></div>
                     </div>
-                    <button id="play-btn" class="btn-play">Play</button>
+                    <button id="play-btn" class="btn">Play</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="basecoat.min.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
