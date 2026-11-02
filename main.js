@@ -1,7 +1,8 @@
 // main.js - Rustlox frontend
 
-const { invoke } = window.__TAURI__.core;
-const { listen } = window.__TAURI__.event;
+const _tauri = window.__TAURI__ || { core: { invoke: async () => null }, event: { listen: async () => ({ unlisten: () => {} }) } };
+const { invoke } = _tauri.core;
+const { listen } = _tauri.event;
 
 // State
 let currentView = "home";
