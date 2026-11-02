@@ -1,6 +1,6 @@
-# Prism UI
+# Refract UI
 
-Frontend for the Prism Roblox launcher (Tauri 2 + vanilla HTML/CSS/JS).
+Frontend for the Refract Roblox launcher (Tauri 2 + vanilla HTML/CSS/JS).
 
 ## Files
 - `index.html` - views, modal, play bar, launch overlay
