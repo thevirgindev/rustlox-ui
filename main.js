@@ -66,22 +66,21 @@ function setupNav() {
 function gameCard(g) {
     const c = el("div", "game-card");
     c.innerHTML = `
-        <div class="game-thumb-wrap">
-            <img class="game-thumb" alt="" loading="lazy">
+        <div class="card-image-wrapper">
+            <img class="card-image" alt="" loading="lazy">
+            <div class="card-hover-overlay">
+                <div class="play-button-small">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="8,5 20,12 8,19"/></svg>
+                </div>
+            </div>
             ${g.playing > 0 ? `<div class="g-playing"><span class="g-live-dot"></span>${fmt(g.playing)}</div>` : ""}
         </div>
-        <div class="game-meta">
-            <div class="g-name"></div>
-            <div class="g-creator"></div>
-            <div class="g-foot"><span class="g-visits"></span><span class="g-like"></span></div>
+        <div class="card-info">
+            <div class="card-title"></div>
+            <div class="card-category"></div>
         </div>`;
-    c.querySelector(".g-name").textContent = g.name || "Untitled";
-    c.querySelector(".g-creator").textContent = g.creator || "\u2713 verified creator";
-    c.querySelector(".g-visits").textContent = fmt(g.visits) + " visits";
-    c.querySelector(".g-like").textContent =
-        (g.likes + g.dislikes > 0
-            ? Math.round((g.likes / (g.likes + g.dislikes)) * 100) + "%"
-            : "--") + " \u2665";
+    c.querySelector(".card-title").textContent = g.name || "Untitled";
+    c.querySelector(".card-category").textContent = g.creator || "verified creator";
     const img = c.querySelector("img");
     if (g.thumbnail_url) {
         img.src = g.thumbnail_url;
