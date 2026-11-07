@@ -3,6 +3,13 @@
 const _tauri = window.__TAURI__ || { core: { invoke: async () => null }, event: { listen: async () => ({ unlisten: () => {} }) } };
 const { invoke } = _tauri.core;
 const { listen } = _tauri.event;
+const tauriWin = _tauri.window?.getCurrentWindow?.() ?? null;
+
+let frameless = false;
+function layoutPx(playing) {
+    return { sidebarPx: playing ? 56 : 224, topbarPx: (playing ? 0 : 56) + (frameless ? 32 : 0) };
+}
+function setLayout(playing) { return invoke("set_layout", layoutPx(playing)); }
 
 // State
 let currentView = "home";
@@ -40,15 +47,24 @@ function note(msg, cls) {
 
 // ============ navigation ============
 
+const VIEW_TITLES = { home: "Home", games: "Discover", library: "Library", mods: "Mods", settings: "Settings" };
+
 function switchView(name) {
     currentView = name;
+    const title = $id("view-title");
+    if (title) title.textContent = VIEW_TITLES[name] || "";
+    $id("view-container").scrollTop = 0; // views share one scroller
     document.querySelectorAll(".nav-item").forEach((n) =>
         n.classList.toggle("active", n.dataset.view === name)
     );
     document.querySelectorAll(".view").forEach((v) =>
         v.classList.toggle("active", v.id === `view-${name}`)
     );
-    if (name === "games" && !$id("sort-tabs").children.length) loadDiscover();
+    if (name === "games") loadDiscover();
+    if (name === "library") {
+        loadLibrary();
+        setTimeout(syncLibrarySlider, 30);
+    }
     if (name === "settings" && !cacheState.length) initCache(null);
 }
 
@@ -63,30 +79,193 @@ function setupNav() {
 
 // ============ game cards ============
 
-function gameCard(g) {
-    const c = el("div", "game-card");
-    c.innerHTML = `
-        <div class="card-image-wrapper">
-            <img class="card-image" alt="" loading="lazy">
-            <div class="card-hover-overlay">
-                <div class="play-button-small">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="8,5 20,12 8,19"/></svg>
+// ============ roblox cards & friends ============
+
+function makeAvatarSvg(name, bg) {
+    const initial = (name || "U").charAt(0).toUpperCase();
+    const safeName = encodeURIComponent(name.replace(/[^a-zA-Z0-9]/g, ""));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="58" height="58" viewBox="0 0 58 58">
+        <defs>
+            <linearGradient id="av_${safeName}" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="${bg || "#6366f1"}" />
+                <stop offset="100%" stop-color="#111827" />
+            </linearGradient>
+        </defs>
+        <circle cx="29" cy="29" r="28" fill="url(#av_${safeName})"/>
+        <circle cx="29" cy="22" r="10" fill="#ffffff" opacity="0.9"/>
+        <path d="M15 48c0-7.7 6.3-14 14-14s14 6.3 14 14" fill="#ffffff" opacity="0.85"/>
+        <text x="29" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="900" fill="${bg || "#111827"}" text-anchor="middle">${initial}</text>
+    </svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+async function renderFriendsBar() {
+    const container = $id("friends-list-container");
+    if (!container) return;
+    try {
+        const friends = await invoke("get_friends").catch(() => []);
+        container.innerHTML = "";
+        friends.forEach((f) => {
+            const item = el("div", "friend-item");
+            item.setAttribute("role", "button");
+            item.tabIndex = 0;
+            item.title = `${f.name} • ${f.status === "online" ? `Playing ${f.game || "Roblox"}` : "Offline"}`;
+            item.innerHTML = `
+                <div class="friend-avatar-wrap">
+                    <img class="friend-avatar-svg" src="${makeAvatarSvg(f.name, f.avatarColor)}" alt="${escapeHtml(f.name)}">
+                    ${f.status === "online" ? '<span class="friend-online-dot"></span>' : ""}
                 </div>
-            </div>
-            ${g.playing > 0 ? `<div class="g-playing"><span class="g-live-dot"></span>${fmt(g.playing)}</div>` : ""}
-        </div>
-        <div class="card-info">
-            <div class="card-title"></div>
-            <div class="card-category"></div>
-        </div>`;
-    c.querySelector(".card-title").textContent = g.name || "Untitled";
-    c.querySelector(".card-category").textContent = g.creator || "verified creator";
-    const img = c.querySelector("img");
-    if (g.thumbnail_url) {
-        img.src = g.thumbnail_url;
+                <span class="friend-name">${escapeHtml(f.name)}</span>
+            `;
+            item.addEventListener("click", () => {
+                showToast(`${f.name} is online playing ${f.game || "Roblox"}!`);
+            });
+            container.appendChild(item);
+        });
+    } catch (e) { /* ignore */ }
+
+    const addBtn = $id("btn-add-friends");
+    if (addBtn && !addBtn.dataset.bound) {
+        addBtn.dataset.bound = "1";
+        addBtn.addEventListener("click", () => {
+            showToast("Friend requests: 1 pending request from @ninnie");
+        });
     }
+}
+
+function robloxCardLandscape(g) {
+    const c = el("div", "roblox-card roblox-card-landscape");
+    c.tabIndex = 0;
+    c.setAttribute("role", "button");
+    const gameTitle = g.name || g.title || "Experience";
+    const likesTotal = (g.likes || 0) + (g.dislikes || 0);
+    const ratingPct = likesTotal > 0
+        ? Math.round((g.likes / likesTotal) * 100)
+        : (88 + (Math.abs(g.place_id || 1) % 11));
+    const isAd = g.is_ad || (g.place_id === 910006 || g.place_id === 910011);
+
+    c.innerHTML = `
+        <div class="roblox-card-thumb-wrap landscape">
+            <img class="roblox-card-thumb" alt="" loading="lazy" src="${g.thumbnail_url || ""}">
+        </div>
+        <div class="roblox-card-body">
+            <div class="roblox-card-title" title="${escapeHtml(gameTitle)}">${escapeHtml(gameTitle)}</div>
+            <div class="roblox-card-stats">
+                ${isAd ? '<span class="roblox-ad-label">Ad</span><span class="roblox-dot-sep">•</span>' : ""}
+                <span class="roblox-stat-rating">
+                    <svg viewBox="0 0 24 24" class="stat-icon-thumbs" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                    ${ratingPct}% Rating
+                </span>
+            </div>
+        </div>
+    `;
+
     c.addEventListener("click", () => openGame(g));
+    c.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openGame(g);
+        }
+    });
+
     return c;
+}
+
+function robloxCardSquare(g) {
+    const c = el("div", "roblox-card roblox-card-square");
+    c.tabIndex = 0;
+    c.setAttribute("role", "button");
+    const gameTitle = g.name || g.title || "Experience";
+    const likesTotal = (g.likes || 0) + (g.dislikes || 0);
+    const ratingPct = likesTotal > 0
+        ? Math.round((g.likes / likesTotal) * 100)
+        : (86 + (Math.abs(g.place_id || 1) % 12));
+    const playingCount = g.playing > 0 ? fmt(g.playing) : "1.2K";
+
+    c.innerHTML = `
+        <div class="roblox-card-thumb-wrap square">
+            <img class="roblox-card-thumb" alt="" loading="lazy" src="${g.thumbnail_url || ""}">
+        </div>
+        <div class="roblox-card-body">
+            <div class="roblox-card-title" title="${escapeHtml(gameTitle)}">${escapeHtml(gameTitle)}</div>
+            <div class="roblox-card-stats">
+                <span class="roblox-stat-rating">
+                    <svg viewBox="0 0 24 24" class="stat-icon-thumbs" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                    ${ratingPct}%
+                </span>
+                <span class="roblox-stat-playing">
+                    <svg viewBox="0 0 24 24" class="stat-icon-person" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    ${playingCount}
+                </span>
+            </div>
+        </div>
+    `;
+
+    c.addEventListener("click", () => openGame(g));
+    c.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openGame(g);
+        }
+    });
+
+    return c;
+}
+
+function gameCard(g) {
+    return robloxCardLandscape(g);
+}
+
+function failGrid(container, msg) {
+    if (!container) return;
+    container.innerHTML = "";
+    container.appendChild(note(msg, "error-note"));
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function renderRobloxLandscape(container, games) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!games || !games.length) {
+        container.appendChild(note("Nothing surfaced here yet - try another row."));
+        return;
+    }
+    games.forEach((g) => container.appendChild(robloxCardLandscape(g)));
+}
+
+function renderRobloxSquare(container, games) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!games || !games.length) {
+        container.appendChild(note("Nothing surfaced here yet - try another row."));
+        return;
+    }
+    games.forEach((g) => container.appendChild(robloxCardSquare(g)));
+}
+
+function skeletonRobloxGrid(container, n, isLandscape) {
+    if (!container) return;
+    container.innerHTML = "";
+    for (let i = 0; i < (n || 6); i++) {
+        const c = el("div", "roblox-card loading-skeleton");
+        c.innerHTML = `
+            <div class="roblox-card-thumb-wrap ${isLandscape ? "landscape" : "square"}"></div>
+            <div class="roblox-card-body">
+                <div class="sk-line" style="width: 85%; height: 14px; margin-bottom: 4px;"></div>
+                <div class="sk-line short" style="width: 45%; height: 11px;"></div>
+            </div>
+        `;
+        container.appendChild(c);
+    }
 }
 
 function renderGrid(container, games) {
@@ -100,16 +279,45 @@ function renderGrid(container, games) {
 
 function skeleton(container, n) {
     container.innerHTML = "";
-    for (let i = 0; i < (n || 8); i++) container.appendChild(el("div", "game-card loading-skeleton"));
+    for (let i = 0; i < (n || 8); i++) {
+        const c = el("div", "roblox-card loading-skeleton");
+        c.innerHTML = `
+            <div class="roblox-card-thumb-wrap landscape"></div>
+            <div class="roblox-card-body">
+                <div class="sk-line" style="width: 80%;"></div>
+                <div class="sk-line short" style="width: 40%;"></div>
+            </div>`;
+        container.appendChild(c);
+    }
+}
+
+// Simple toast notification helper
+function showToast(msg) {
+    let t = $id("rustlox-toast");
+    if (!t) {
+        t = el("div", "rustlox-toast");
+        t.id = "rustlox-toast";
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add("visible");
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(() => t.classList.remove("visible"), 2600);
 }
 
 // ============ home / dashboard ============
 
 async function loadHome() {
+    renderFriendsBar();
     const trend = $id("home-trending");
     const now = $id("home-playing");
-    skeleton(trend, 8);
-    skeleton(now, 8);
+    skeletonRobloxGrid(trend, 12, true);
+    skeletonRobloxGrid(now, 8, false);
+    const heroEl = $id("home-featured");
+    if (heroEl) {
+        heroEl.className = "featured loading";
+        heroEl.innerHTML = "";
+    }
 
     const dash = invoke("get_dashboard").catch(() => null);
     const trending = invoke("get_sort_games", { sortId: "top-trending" }).catch(() => null);
@@ -120,28 +328,12 @@ async function loadHome() {
         new Promise((r) => setTimeout(() => r([null, null, null]), 25000)),
     ]);
 
-    if (t) renderGrid(trend, t.games); else failGrid(trend, "Top Trending failed to load - hit refresh.");
-    if (p) renderGrid(now, p.games); else failGrid(now, "Playing Now failed to load - hit refresh.");
+    if (t) renderRobloxLandscape(trend, t.games); else failGrid(trend, "Recommended failed to load - hit refresh.");
+    if (p) renderRobloxSquare(now, p.games); else failGrid(now, "Continue failed to load - hit refresh.");
 
     const feat = $id("home-featured");
     if (feat && t && t.games && t.games.length) {
-        const g = t.games[0];
-        feat.classList.remove("hidden");
-        feat.innerHTML = `
-            <div class="feat-bg" style="background-image:url('${g.thumbnail_url || ""}')"></div>
-            <div class="feat-scrim"></div>
-            <div class="feat-body">
-                <div class="feat-tag">Featured</div>
-                <h2 class="feat-title"></h2>
-                <div class="feat-meta"></div>
-                <button class="feat-play">Play</button>
-            </div>`;
-        feat.querySelector(".feat-title").textContent = g.name || "Untitled";
-        feat.querySelector(".feat-meta").textContent =
-            (g.creator || "verified creator") + "  ·  " + fmt(g.playing) + " playing";
-        const playBtn = feat.querySelector(".feat-play");
-        playBtn.addEventListener("click", (e) => { e.stopPropagation(); openGame(g); });
-        feat.addEventListener("click", () => openGame(g));
+        buildHero(feat, t.games.slice(0, 6));
     } else if (feat) {
         feat.classList.add("hidden");
     }
@@ -164,6 +356,168 @@ async function loadHome() {
     }
 }
 
+// ============ featured hero ============
+
+// Pull a vivid tint out of the art so the button and selected row follow the game,
+// like the store does. Needs CORS on the image; on failure we stay on the default blue.
+const tintCache = new Map();
+
+function sampleTint(url) {
+    return new Promise((resolve) => {
+        if (!url) return resolve(null);
+        if (tintCache.has(url)) return resolve(tintCache.get(url));
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => {
+            let out = null;
+            try {
+                const c = document.createElement("canvas");
+                c.width = c.height = 16;
+                const x = c.getContext("2d", { willReadFrequently: true });
+                x.drawImage(im, 0, 0, 16, 16);
+                const d = x.getImageData(0, 0, 16, 16).data;
+                let r = 0, g = 0, b = 0, w = 0;
+                for (let i = 0; i < d.length; i += 4) {
+                    const mx = Math.max(d[i], d[i + 1], d[i + 2]);
+                    const mn = Math.min(d[i], d[i + 1], d[i + 2]);
+                    const sat = mx ? (mx - mn) / mx : 0;
+                    const wt = sat * sat * (mx / 255) + 0.001;
+                    r += d[i] * wt; g += d[i + 1] * wt; b += d[i + 2] * wt; w += wt;
+                }
+                r /= w; g /= w; b /= w;
+                const mx = Math.max(r, g, b);
+                const sat = mx ? (mx - Math.min(r, g, b)) / mx : 0;
+                if (sat >= 0.35 && mx > 0) {
+                    const k = 235 / mx;
+                    out = [r, g, b].map((v) => Math.min(255, Math.round(v * k)));
+                }
+            } catch (e) { /* tainted canvas */ }
+            tintCache.set(url, out);
+            resolve(out);
+        };
+        im.onerror = () => resolve(null);
+        im.src = url;
+    });
+}
+
+function buildHero(feat, games) {
+    let idx = 0;
+    let autoTimer = null;
+    feat.className = "featured";
+    feat.innerHTML = `
+        <div class="hero-main">
+            <img class="hero-art" alt="">
+            <div class="hero-shade"></div>
+            <div class="hero-copy">
+                <h2 class="hero-title"></h2>
+                <div class="hero-label">Trending now</div>
+                <p class="hero-tagline"></p>
+                <div class="hero-meta"></div>
+                <button class="hero-cta">Play</button>
+            </div>
+            <div class="hero-arrows">
+                <button class="hero-arrow-btn" id="hero-prev" title="Previous experience" aria-label="Previous experience">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="hero-arrow-btn" id="hero-next" title="Next experience" aria-label="Next experience">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>`;
+
+    const main = feat.querySelector(".hero-main");
+    const art = feat.querySelector(".hero-art");
+    const title = feat.querySelector(".hero-title");
+    const tagline = feat.querySelector(".hero-tagline");
+    const meta = feat.querySelector(".hero-meta");
+    const prevBtn = feat.querySelector("#hero-prev");
+    const nextBtn = feat.querySelector("#hero-next");
+
+    function select(i) {
+        if (!games || !games.length) return;
+        idx = (i + games.length) % games.length;
+        const g = games[idx];
+        if (!g) return;
+        art.style.animation = "none";
+        void art.offsetWidth;
+        art.style.animation = "";
+        art.src = g.thumbnail_url || "";
+        title.textContent = g.name || "Untitled";
+        tagline.textContent = (g.description || "").trim() || ("Join thousands of players in " + (g.name || "this experience") + " on Roblox.");
+        meta.textContent = g.playing > 0 ? fmt(g.playing) + " playing" : "";
+        sampleTint(g.thumbnail_url).then((rgb) => {
+            if (rgb) {
+                const lum = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+                feat.style.setProperty("--tint", `rgb(${rgb.join(",")})`);
+                feat.style.setProperty("--tint-ink", lum > 0.6 ? "#111" : "#fff");
+            } else {
+                feat.style.removeProperty("--tint");
+                feat.style.removeProperty("--tint-ink");
+            }
+        });
+    }
+
+    function resetTimer() {
+        clearInterval(autoTimer);
+        autoTimer = setInterval(() => select(idx + 1), 7000);
+    }
+
+    if (prevBtn) {
+        prevBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            select(idx - 1);
+            resetTimer();
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            select(idx + 1);
+            resetTimer();
+        });
+    }
+
+    feat.addEventListener("mouseenter", () => clearInterval(autoTimer));
+    feat.addEventListener("mouseleave", resetTimer);
+
+    main.addEventListener("click", (e) => {
+        if (e.target.closest(".hero-arrows")) return;
+        if (games[idx]) openGame(games[idx]);
+    });
+
+    feat.querySelector(".hero-cta").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (games[idx]) openGame(games[idx]);
+    });
+
+    select(0);
+    resetTimer();
+}
+
+// ============ row arrows (home shelves) ============
+
+function setupRows() {
+    document.querySelectorAll(".row-arrows").forEach((group) => {
+        const row = $id(group.dataset.target);
+        if (!row) return;
+        const [prev, next] = group.querySelectorAll("button");
+        const sync = () => {
+            prev.disabled = row.scrollLeft < 4;
+            next.disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+        };
+        group.querySelectorAll("button").forEach((b) =>
+            b.addEventListener("click", () =>
+                row.scrollBy({ left: Number(b.dataset.dir) * row.clientWidth * 0.9, behavior: "smooth" })
+            )
+        );
+        row.addEventListener("scroll", sync, { passive: true });
+        new MutationObserver(sync).observe(row, { childList: true });
+        window.addEventListener("resize", sync);
+        sync();
+    });
+}
+
 function parseCount(s) {
     const m = /^([\d.]+)([KMB]?)$/.exec(s || "");
     if (!m) return 0;
@@ -171,85 +525,228 @@ function parseCount(s) {
     return parseFloat(m[1]) * mult;
 }
 
-function failGrid(container, msg) {
-    container.innerHTML = "";
-    container.appendChild(note(msg, "error-note"));
-}
-
 // ============ discover ============
 
-const SORT_OVERRIDE = [
-    { id: "top-trending", display_name: "Top Trending" },
-    { id: "top-playing-now", display_name: "Playing Now" },
-    { id: "up-and-coming", display_name: "Up and Coming" },
-];
+let discoverGamesList = [];
+let discoverGridLayout = "5"; // "3" or "5"
 
 async function loadDiscover() {
-    const tabs = $id("sort-tabs");
     const grid = $id("games-grid");
-    skeleton(grid, 11);
-    tabs.innerHTML = "";
+    if (!grid) return;
+    skeleton(grid, discoverGridLayout === "3" ? 6 : 10);
 
-    const rows = (await invoke("get_sorts").catch(() => []) || []).concat(SORT_OVERRIDE);
-    const seen = new Set();
-    const tabsList = rows.filter((r) => r.id && !seen.has(r.id) && seen.add(r.id));
-
-    for (const t of tabsList) {
-        const b = el("button", "sort-tab", t.display_name || t.id);
-        b.dataset.sort = t.id;
-        b.addEventListener("click", () => selectSort(t.id, b));
-        tabs.appendChild(b);
-    }
-    currentSort = null;
-    selectSort(tabsList[0].id, tabs.firstElementChild);
-}
-
-async function selectSort(id, btn) {
-    if (!id) return;
-    currentSort = id;
-    document.querySelectorAll(".sort-tab").forEach((b) => b.classList.toggle("active", b.dataset.sort === id));
-    const grid = $id("games-grid");
-    skeleton(grid, 11);
     try {
-        const page = await invoke("get_sort_games", { sortId: id });
-        renderGrid(grid, (page && page.games) || []);
+        const [trend, play, more] = await Promise.all([
+            invoke("get_sort_games", { sortId: "top-trending" }).catch(() => null),
+            invoke("get_sort_games", { sortId: "top-playing-now" }).catch(() => null),
+            invoke("get_sort_games", { sortId: "up-and-coming" }).catch(() => null),
+        ]);
+        const pool = [...(trend?.games || []), ...(play?.games || []), ...(more?.games || [])];
+        const seen = new Set();
+        discoverGamesList = pool.filter((g) => g && g.place_id && !seen.has(g.place_id) && seen.add(g.place_id));
+        renderGrid(grid, discoverGamesList);
     } catch (e) {
-        failGrid(grid, "Category failed: " + e);
+        failGrid(grid, "Discover failed: " + e);
     }
 }
 
-// ============ search ============
+function setupDiscoverGridToggle() {
+    const btn3 = $id("grid-toggle-3x3");
+    const btn5 = $id("grid-toggle-5x5");
+    const grid = $id("games-grid");
+    if (!btn3 || !btn5 || !grid) return;
+
+    btn3.addEventListener("click", () => {
+        discoverGridLayout = "3";
+        btn3.classList.add("active");
+        btn5.classList.remove("active");
+        grid.classList.add("grid-3x3");
+        grid.classList.remove("grid-5x5");
+    });
+
+    btn5.addEventListener("click", () => {
+        discoverGridLayout = "5";
+        btn5.classList.add("active");
+        btn3.classList.remove("active");
+        grid.classList.add("grid-5x5");
+        grid.classList.remove("grid-3x3");
+    });
+}
+
+// ============ search (integrated in Discover) ============
 
 function setupSearch() {
-    const input = $id("search-input");
-    const hints = ["obby", "anime", "horror", "simulator", "racing"];
-    for (const h of hints) {
-        const b = el("button", "sort-tab", h);
-        b.addEventListener("click", () => {
-            input.value = h;
-            runSearch(h);
+    const discInput = $id("discover-search-input");
+    const clearBtn = $id("discover-search-clear");
+
+    if (discInput) {
+        discInput.addEventListener("input", (e) => {
+            const q = (e.target.value || "").trim();
+            if (clearBtn) clearBtn.classList.toggle("hidden", !q);
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                if (q.length > 0) {
+                    runSearch(q);
+                } else {
+                    renderGrid($id("games-grid"), discoverGamesList);
+                }
+            }, 250);
         });
-        $id("search-hint-pills").appendChild(b);
     }
 
-    input.addEventListener("input", () => {
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => {
-            if (input.value.trim().length >= 2 && currentView !== "search") switchView("search");
-            runSearch(input.value.trim());
-        }, 450);
-    });
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            if (discInput) discInput.value = "";
+            clearBtn.classList.add("hidden");
+            renderGrid($id("games-grid"), discoverGamesList);
+            if (discInput) discInput.focus();
+        });
+    }
 }
 
 async function runSearch(q) {
     if (!q) return;
-    const grid = $id("search-grid");
-    skeleton(grid, 9);
+    const grid = $id("games-grid");
+    if (!grid) return;
+    skeleton(grid, 6);
     try {
         const page = await invoke("search_games", { query: q });
         renderGrid(grid, (page && page.games) || []);
     } catch (e) {
         failGrid(grid, "Search failed: " + e);
+    }
+}
+
+// ============ library (slider tabs) ============
+
+let libraryFilter = "all";
+
+function syncLibrarySlider(btn) {
+    const container = $id("library-slider-container");
+    const indicator = $id("library-slider-indicator");
+    const activeBtn = btn || container?.querySelector(".slider-btn.active");
+    if (!container || !indicator || !activeBtn) return;
+    const cRect = container.getBoundingClientRect();
+    const bRect = activeBtn.getBoundingClientRect();
+    indicator.style.width = `${bRect.width}px`;
+    indicator.style.transform = `translateX(${bRect.left - cRect.left - 4}px)`;
+}
+
+async function loadLibrary() {
+    const grid = $id("library-grid");
+    if (!grid) return;
+    skeleton(grid, 6);
+
+    try {
+        const page = await invoke("get_sort_games", { sortId: "top-trending" });
+        const all = (page && page.games) || [];
+        let filtered = all;
+        if (libraryFilter === "recent") {
+            filtered = all.slice(0, 4);
+        } else if (libraryFilter === "favorites") {
+            filtered = all.filter((g) => g.likes > 2500000);
+        }
+        renderGrid(grid, filtered);
+    } catch (e) {
+        failGrid(grid, "Library could not load: " + e);
+    }
+}
+
+function setupLibrary() {
+    const container = $id("library-slider-container");
+    if (!container) return;
+    container.querySelectorAll(".slider-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            container.querySelectorAll(".slider-btn").forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            libraryFilter = btn.dataset.filter || "all";
+            syncLibrarySlider(btn);
+            loadLibrary();
+        });
+    });
+    window.addEventListener("resize", () => syncLibrarySlider());
+}
+
+// ============ account modal (Not Linked interaction) ============
+
+function setupAccountModal() {
+    const modal = $id("account-modal");
+    const badge = $id("user-badge");
+    const closeBtn = $id("account-modal-close");
+    const cookieInput = $id("acc-cookie-input");
+    const saveBtn = $id("acc-save-cookie");
+    const clearBtn = $id("acc-clear-cookie");
+    const settingsBtn = $id("acc-open-settings");
+
+    if (!modal || !badge) return;
+
+    async function syncModalState() {
+        const st = await invoke("get_cookie_status").catch(() => ({ linked: false, username: null }));
+        const tag = $id("acc-status-tag");
+        const status = $id("acc-cookie-status");
+        const avatar = $id("acc-avatar-large");
+
+        if (st && st.linked) {
+            tag.textContent = `Linked (@${st.username || "player"})`;
+            tag.className = "acc-status-tag linked";
+            status.textContent = `Active: linked as @${st.username || "player"}`;
+            status.className = "cookie-status ok";
+            avatar.className = "acc-avatar linked";
+            avatar.textContent = (st.username || "P").charAt(0).toUpperCase();
+        } else {
+            tag.textContent = "Not linked";
+            tag.className = "acc-status-tag";
+            status.textContent = "No account linked yet.";
+            status.className = "cookie-status";
+            avatar.className = "acc-avatar";
+            avatar.innerHTML = `<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+        }
+    }
+
+    badge.addEventListener("click", () => {
+        modal.classList.remove("hidden");
+        syncModalState();
+        if (cookieInput) setTimeout(() => cookieInput.focus(), 80);
+    });
+
+    if (closeBtn) closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    modal.querySelector(".modal-backdrop").addEventListener("click", () => modal.classList.add("hidden"));
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+            modal.classList.add("hidden");
+        }
+    });
+
+    if (saveBtn) {
+        saveBtn.addEventListener("click", async () => {
+            const val = cookieInput.value.trim();
+            if (!val) return;
+            saveBtn.textContent = "Linking...";
+            await invoke("save_cookie", { cookie: val }).catch(() => {});
+            cookieInput.value = "";
+            saveBtn.textContent = "Linked!";
+            setTimeout(() => (saveBtn.textContent = "Link"), 1600);
+            await loadCookieStatus();
+            await syncModalState();
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", async () => {
+            await invoke("clear_cookie").catch(() => {});
+            await loadCookieStatus();
+            await syncModalState();
+        });
+    }
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+            modal.classList.add("hidden");
+            switchView("settings");
+            const ci = $id("cookie-input");
+            if (ci) setTimeout(() => ci.focus(), 150);
+        });
     }
 }
 
@@ -319,7 +816,7 @@ async function launchGame(g) {
     $id("pb-undock").textContent = "Pop Out";
     document.body.classList.add("playing");
     $id("play-exit-pill").classList.remove("hidden");
-    await invoke("set_layout", { sidebarPx: 56, topbarPx: 0 });
+    await setLayout(true);
 }
 
 async function pollStatus() {
@@ -332,7 +829,7 @@ async function pollStatus() {
         } else if (!st.embedded) {
             document.body.classList.remove("playing");
             $id("play-exit-pill").classList.add("hidden");
-            await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
+            await setLayout(false);
         }
     } catch (e) { /* transient */ }
 }
@@ -377,7 +874,7 @@ async function setupPlayEvents() {
         $id("play-bar").classList.add("hidden");
         document.body.classList.remove("playing");
         $id("play-exit-pill").classList.add("hidden");
-        await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
+        await setLayout(false);
         clearInterval(statusTimer);
     });
 
@@ -386,20 +883,21 @@ async function setupPlayEvents() {
         $id("play-bar").classList.add("hidden");
         $id("play-exit-pill").classList.add("hidden");
         document.body.classList.remove("playing");
-        await invoke("set_layout", { sidebarPx: 224, topbarPx: 56 });
+        await setLayout(false);
         clearInterval(statusTimer);
     });
 }
 
 // ============ mods ============
 
-async function loadMods() {
-    const r = await invoke("get_mods").catch(() => []);
-    const mods = Array.isArray(r) ? r : [];
+let modsListCache = [];
+
+function renderMods(mods) {
     const grid = $id("mods-grid");
+    if (!grid) return;
     grid.innerHTML = "";
     if (!mods.length) {
-        grid.appendChild(note("No mods configured yet."));
+        grid.appendChild(note("No matching mods found."));
         return;
     }
     for (const m of mods) {
@@ -422,6 +920,44 @@ async function loadMods() {
         });
         grid.appendChild(card);
     }
+}
+
+function filterAndRenderMods() {
+    const input = $id("mods-search-input");
+    const q = (input?.value || "").trim().toLowerCase();
+    const clearBtn = $id("mods-search-clear");
+    if (clearBtn) clearBtn.classList.toggle("hidden", !q);
+    if (!q) {
+        renderMods(modsListCache);
+        return;
+    }
+    const filtered = modsListCache.filter(
+        (m) => (m.name && m.name.toLowerCase().includes(q)) ||
+               (m.category && m.category.toLowerCase().includes(q)) ||
+               (m.description && m.description.toLowerCase().includes(q))
+    );
+    renderMods(filtered);
+}
+
+function setupModsSearch() {
+    const input = $id("mods-search-input");
+    const clearBtn = $id("mods-search-clear");
+    if (input) {
+        input.addEventListener("input", filterAndRenderMods);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            input.value = "";
+            filterAndRenderMods();
+            input.focus();
+        });
+    }
+}
+
+async function loadMods() {
+    const r = await invoke("get_mods").catch(() => []);
+    modsListCache = Array.isArray(r) ? r : [];
+    filterAndRenderMods();
 }
 
 $id("mod-add-file").addEventListener("click", async () => {
@@ -447,7 +983,38 @@ function paintRange(input) {
     input.style.setProperty("--pct", pct + "%");
 }
 
+function syncSettingsSlider(btn) {
+    const container = $id("settings-slider-container");
+    const indicator = $id("settings-slider-indicator");
+    const activeBtn = btn || container?.querySelector(".slider-btn.active");
+    if (!container || !indicator || !activeBtn) return;
+    const cRect = container.getBoundingClientRect();
+    const bRect = activeBtn.getBoundingClientRect();
+    indicator.style.width = `${bRect.width}px`;
+    indicator.style.transform = `translateX(${bRect.left - cRect.left - 4}px)`;
+}
+
+function setupSettingsSlider() {
+    const container = $id("settings-slider-container");
+    if (!container) return;
+    const btns = container.querySelectorAll(".slider-btn");
+    btns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            btns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            const target = btn.dataset.target;
+            document.querySelectorAll(".settings-section").forEach((sec) => {
+                sec.classList.toggle("hidden", sec.dataset.section !== target);
+            });
+            syncSettingsSlider(btn);
+        });
+    });
+    window.addEventListener("resize", () => syncSettingsSlider());
+    setTimeout(() => syncSettingsSlider(), 80);
+}
+
 function setupSettings() {
+    setupSettingsSlider();
     ["fps-cap", "graphics-quality"].forEach((id) => {
         const i = $id(id);
         i.addEventListener("input", () => {
@@ -601,6 +1168,8 @@ async function loadCookieStatus() {
     const badge = $id("user-badge");
     const name = $id("user-name");
     const status = $id("cookie-status");
+    const avatar = $id("avatar-dot");
+    if (avatar) avatar.textContent = st.linked ? (st.username || "?").charAt(0).toUpperCase() : "";
     if (st.linked) {
         badge.classList.add("linked");
         name.textContent = st.username || "Linked";
@@ -705,10 +1274,14 @@ function setupRefresh() {
         const btn = $id("refresh-btn");
         btn.classList.add("spin");
         setTimeout(() => btn.classList.remove("spin"), 900);
-        if (currentView === "home") loadHome();
-        else if (currentView === "games") loadDiscover();
-        else if (currentView === "search") runSearch($id("search-input").value.trim());
-        else if (currentView === "settings") {
+        if (currentView === "home") {
+            loadHome();
+        } else if (currentView === "games") {
+            const discInput = $id("discover-search-input");
+            const q = discInput ? discInput.value.trim() : "";
+            if (q) runSearch(q);
+            else loadDiscover();
+        } else if (currentView === "settings") {
             loadSettings();
             loadFastflags();
             loadCookieStatus();
@@ -836,7 +1409,7 @@ function renderCmdResults() {
             ${g.playing > 0 ? `<span class="cmd-item-playing">${fmt(g.playing)}</span>` : ""}
         `;
         item.querySelector(".cmd-item-name").textContent = g.name || "Untitled";
-        item.querySelector(".cmd-item-meta").textContent = g.creator || "verified creator";
+        item.querySelector(".cmd-item-meta").textContent = g.creator || "Roblox Community";
         item.addEventListener("click", () => {
             openGame(g);
             closeCmdPalette();
@@ -855,11 +1428,36 @@ function scrollCmdSelected() {
     if (active) active.scrollIntoView({ block: "nearest" });
 }
 
+// ============ window frame ============
+
+async function setupFrame() {
+    if (!tauriWin) return;
+    try { frameless = !(await tauriWin.isDecorated()); } catch { frameless = false; }
+    if (!frameless) return;
+    document.body.classList.add("frameless");
+    $id("win-min").addEventListener("click", () => tauriWin.minimize());
+    $id("win-max").addEventListener("click", () => tauriWin.toggleMaximize());
+    $id("win-close").addEventListener("click", () => tauriWin.close());
+    const syncMax = async () => {
+        try { document.body.classList.toggle("maximized", await tauriWin.isMaximized()); } catch {}
+    };
+    let _t;
+    window.addEventListener("resize", () => { clearTimeout(_t); _t = setTimeout(syncMax, 100); });
+    syncMax();
+    await setLayout(false).catch(() => {});
+}
+
 // ============ boot ============
 
 document.addEventListener("DOMContentLoaded", async () => {
+    await setupFrame();
     setupNav();
+    setupRows();
+    setupDiscoverGridToggle();
     setupSearch();
+    setupModsSearch();
+    setupLibrary();
+    setupAccountModal();
     setupModal();
     setupRefresh();
     setupPlayEvents();

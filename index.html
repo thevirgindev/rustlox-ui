@@ -6,172 +6,318 @@
     <title>Rustlox</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="basecoat.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="app">
-        <!-- Top bar -->
-        <header id="topbar">
-            <div class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <rect width="24" height="24" rx="6" fill="#3b82f6"/>
-                    <path d="M12 5 19 19H5L12 5z" fill="#0a0f1a" opacity="0.9"/>
-                    <path d="M12 9.5 15.5 16h-7L12 9.5z" fill="#93c5fd"/>
-                </svg>
-                <span class="logo-name">Rustlox</span>
-            </div>
-            <nav class="top-nav">
-                <button class="nav-item active" data-view="home">Home</button>
-                <button class="nav-item" data-view="games">Discover</button>
-                <button class="nav-item" data-view="search">Search</button>
-                <button class="nav-item" data-view="mods">Mods</button>
-                <button class="nav-item" data-view="settings">Settings</button>
-            </nav>
-            <div class="search-container">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="search-input" placeholder="Search games..." />
-            </div>
-            <div class="topbar-right">
-                <button class="icon-btn" id="refresh-btn" title="Refresh">
-                    <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <div id="titlebar" data-tauri-drag-region>
+            <div class="win-controls">
+                <button class="win-btn" id="win-min" aria-label="Minimize">
+                    <svg viewBox="0 0 12 12"><rect x="1" y="8" width="10" height="1.6" fill="currentColor"/></svg>
                 </button>
-                <div class="user-badge" id="user-badge">
-                    <div class="avatar" id="avatar-dot"></div>
-                    <span id="user-name">Not linked</span>
+                <button class="win-btn" id="win-max" aria-label="Maximize / Restore">
+                    <svg class="ico-max" viewBox="0 0 12 12"><rect x="1.8" y="1.8" width="8.4" height="8.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                    <svg class="ico-restore" viewBox="0 0 12 12"><rect x="1.8" y="3.8" width="6.4" height="6.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.8 3.6V1.8h6.4v6.4H8.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+                <button class="win-btn win-close" id="win-close" aria-label="Close">
+                    <svg viewBox="0 0 12 12"><path d="M1.6 1.6l8.8 8.8M10.4 1.6l-8.8 8.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+        </div>
+        <div id="shell">
+        <!-- Sidebar: 224px wide launcher navigation -->
+        <aside id="sidebar" data-tauri-drag-region>
+            <div class="brand">
+                <svg class="brand-mark" width="30" height="34" viewBox="0 0 30 34" fill="none" aria-hidden="true">
+                    <path d="M1 1h28v21L15 33 1 22z" fill="#fff"/>
+                    <path d="M15 6.5 23 21H7L15 6.5z" fill="#121212"/>
+                    <path d="M15 12.5 18.8 19H11.2L15 12.5z" fill="#fff"/>
+                </svg>
+                <span class="brand-name">Rustlox</span>
+            </div>
+
+            <nav class="side-nav" aria-label="Main Navigation">
+                <button class="nav-item active" data-view="home">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6 2.4 10.9c-.3.3-.1.8.3.8H5V21h5.5v-6h3v6H19v-9.3h2.3c.4 0 .6-.5.3-.8L12 2.6z"/></svg>
+                    <span class="nav-label">Home</span>
+                </button>
+                <button class="nav-item" data-view="games">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.7 5.3-2.2 6.2-6.2 2.2 2.2-6.2 6.2-2.2zM12 10.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg>
+                    <span class="nav-label">Discover</span>
+                </button>
+                <button class="nav-item" data-view="library">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zm-7-2h2v-3h3V9h-3V6h-2v3h-3v2h3z"/></svg>
+                    <span class="nav-label">Library</span>
+                </button>
+                <button class="nav-item" data-view="mods">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+                    <span class="nav-label">Mods</span>
+                </button>
+            </nav>
+
+            <nav class="side-nav side-bottom" aria-label="Preferences">
+                <button class="nav-item" data-view="settings">
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.48.48 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
+                    <span class="nav-label">Settings</span>
+                </button>
+            </nav>
+        </aside>
+
+        <div id="main">
+            <!-- Top bar -->
+            <header id="topbar" data-tauri-drag-region>
+                <h1 id="view-title">Home</h1>
+                <div class="topbar-right">
+                    <button class="icon-btn" id="refresh-btn" title="Refresh" aria-label="Refresh">
+                        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                    <button class="user-badge" id="user-badge" title="Manage Roblox Account">
+                        <div class="avatar" id="avatar-dot"></div>
+                        <span id="user-name">Not linked</span>
+                    </button>
                 </div>
-            </div>
-        </header>
-
-        <div id="view-container">
-            <!-- HOME -->
-            <div id="view-home" class="view active">
-                <div class="featured hidden" id="home-featured"></div>
-                <div class="section">
-                    <div class="section-header"><h2>Trending</h2></div>
-                    <div class="game-grid" id="home-trending"></div>
-                </div>
-                <div class="section">
-                    <div class="section-header"><h2>Playing Now</h2></div>
-                    <div class="game-grid" id="home-playing"></div>
-                </div>
-            </div>
-
-            <!-- DISCOVER -->
-            <div id="view-games" class="view">
-                <div class="sort-tabs" id="sort-tabs"></div>
-                <div class="game-grid" id="games-grid"></div>
-            </div>
-
-            <!-- SEARCH -->
-            <div id="view-search" class="view">
-                <div class="sort-tabs" id="search-hint-pills"></div>
-                <div class="game-grid" id="search-grid"></div>
-            </div>
-
-            <!-- MODS -->
-            <div id="view-mods" class="view">
-                <div class="mods-toolbar">
-                    <button id="mod-add-file" class="btn btn-secondary">Add mod file...</button>
-                </div>
-                <div class="mods-grid" id="mods-grid"></div>
-            </div>
-
-            <!-- SETTINGS -->
-            <div id="view-settings" class="view">
-                <div class="settings-container">
-                    <div class="settings-section">
-                        <h3>Account</h3>
-                        <div class="setting-row cookie-row">
-                            <label>.ROBLOSECURITY cookie</label>
-                            <div class="cookie-entry">
-                                <input type="password" id="cookie-input" placeholder="paste your .ROBLOSECURITY value" autocomplete="off">
-                                <button id="save-cookie" class="btn">Link</button>
-                                <button id="clear-cookie" class="btn btn-ghost">Unlink</button>
+            </header>
+            <div id="view-container">
+                <!-- HOME -->
+                <div id="view-home" class="view active">
+                    <!-- Roblox Avatar Friends Bar -->
+                    <div class="friends-shelf" id="home-friends-shelf">
+                        <div class="friend-item add-friends-item" id="btn-add-friends" role="button" tabindex="0" title="Add Friends">
+                            <div class="friend-avatar-wrap add-friends-bubble">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+                                </svg>
+                                <span class="friend-badge">1</span>
                             </div>
-                            <div class="cookie-status" id="cookie-status">account not linked</div>
+                            <span class="friend-name">Add Friends</span>
                         </div>
-                        <p class="section-desc">Stored locally only. Rustlox turns it into a one-time join ticket; the cookie never leaves this machine.</p>
+                        <div class="friends-list" id="friends-list-container"></div>
                     </div>
 
-                    <div class="settings-section">
-                        <h3>Graphics</h3>
-                        <div class="setting-row">
-                            <label>FPS Cap</label>
-                            <div class="range-block">
-                                <input type="range" id="fps-cap" min="0" max="240" step="10" value="60">
-                                <div class="range-meta"><span class="range-val" id="fps-cap-val">60</span><span class="range-hint">fps · 0 = uncapped</span></div>
+                    <div class="featured loading" id="home-featured"></div>
+
+                    <!-- Recommended For You (16:9 Landscape Cards) -->
+                    <div class="section">
+                        <div class="section-header">
+                            <h2>Recommended For You</h2>
+                        </div>
+                        <div class="roblox-grid-landscape" id="home-trending"></div>
+                    </div>
+
+                    <!-- Continue > (Square Cards) -->
+                    <div class="section">
+                        <div class="section-header section-header-arrow" id="home-continue-header" role="button" tabindex="0">
+                            <h2>Continue <span class="header-chevron">&rsaquo;</span></h2>
+                        </div>
+                        <div class="roblox-shelf-continue" id="home-playing"></div>
+                    </div>
+                </div>
+
+                <!-- DISCOVER (Search + 2x2 / 5x5 grid toggles, no tags) -->
+                <div id="view-games" class="view">
+                    <div class="discover-header">
+                        <div class="discover-top-row">
+                            <div class="search-container discover-search-box">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="discover-search-input" placeholder="Search experiences, genres, creators..." aria-label="Search experiences" autocomplete="off" />
+                                <button id="discover-search-clear" class="icon-btn search-clear-btn hidden" title="Clear" aria-label="Clear search">&times;</button>
+                            </div>
+                            <div class="grid-layout-switcher" role="group" aria-label="Grid layout toggle">
+                                <button class="grid-toggle-btn" id="grid-toggle-3x3" data-grid="3" title="3x3 Grid">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                        <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="9.75" y="2.5" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="17" y="2.5" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="2.5" y="9.75" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="17" y="9.75" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="2.5" y="17" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="9.75" y="17" width="4.5" height="4.5" rx="1"/>
+                                        <rect x="17" y="17" width="4.5" height="4.5" rx="1"/>
+                                    </svg>
+                                    <span>3x3 Grid</span>
+                                </button>
+                                <button class="grid-toggle-btn active" id="grid-toggle-5x5" data-grid="5" title="5x5 Grid">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                        <rect x="2" y="2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="6.4" y="2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="10.8" y="2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="15.2" y="2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="19.6" y="2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="2" y="6.4" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="6.4" y="6.4" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="10.8" y="6.4" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="15.2" y="6.4" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="19.6" y="6.4" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="2" y="10.8" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="6.4" y="10.8" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="10.8" y="10.8" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="15.2" y="10.8" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="19.6" y="10.8" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="2" y="15.2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="6.4" y="15.2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="10.8" y="15.2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="15.2" y="15.2" width="3.2" height="3.2" rx="0.6"/>
+                                        <rect x="19.6" y="15.2" width="3.2" height="3.2" rx="0.6"/>
+                                    </svg>
+                                    <span>5x5 Grid</span>
+                                </button>
                             </div>
                         </div>
-                        <div class="setting-row">
-                            <label>Graphics Quality</label>
-                            <div class="range-block">
-                                <input type="range" id="graphics-quality" min="0" max="10" value="5">
-                                <div class="range-meta"><span class="range-val" id="graphics-quality-val">5</span><span class="range-hint">0-10</span></div>
+                    </div>
+                    <div class="game-grid grid-5x5" id="games-grid"></div>
+                </div>
+
+                <!-- MODS -->
+                <div id="view-mods" class="view">
+                    <div class="mods-toolbar">
+                        <div class="search-container mods-search-box">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="mods-search-input" placeholder="Search mods..." aria-label="Search mods" autocomplete="off" />
+                            <button id="mods-search-clear" class="icon-btn search-clear-btn hidden" title="Clear" aria-label="Clear mod search">&times;</button>
+                        </div>
+                        <button id="mod-add-file" class="btn btn-secondary">Add mod file...</button>
+                    </div>
+                    <div class="mods-grid" id="mods-grid"></div>
+                </div>
+
+                <!-- LIBRARY (Slider tabs, no experiences count badge) -->
+                <div id="view-library" class="view">
+                    <div class="library-header">
+                        <div class="library-title-row">
+                            <h2>My Library</h2>
+                        </div>
+                        <div class="slider-container" id="library-slider-container">
+                            <div class="slider-indicator" id="library-slider-indicator"></div>
+                            <button class="slider-btn active" data-filter="all">All Experiences</button>
+                            <button class="slider-btn" data-filter="recent">Recently Played</button>
+                            <button class="slider-btn" data-filter="favorites">Favorites</button>
+                        </div>
+                    </div>
+                    <div class="game-grid" id="library-grid"></div>
+                </div>
+
+                <!-- SETTINGS -->
+                <div id="view-settings" class="view">
+                    <div class="settings-container">
+                        <!-- Horizontal slider for settings categories (All Settings removed) -->
+                        <div class="slider-container settings-slider-container" id="settings-slider-container">
+                            <div class="slider-indicator" id="settings-slider-indicator"></div>
+                            <button class="slider-btn active" data-target="account">Account</button>
+                            <button class="slider-btn" data-target="graphics">Graphics</button>
+                            <button class="slider-btn" data-target="fastflags">FastFlags</button>
+                            <button class="slider-btn" data-target="cache">Cache</button>
+                            <button class="slider-btn" data-target="discord">Discord</button>
+                            <button class="slider-btn" data-target="system">System</button>
+                        </div>
+
+                        <div class="settings-section" data-section="account">
+                            <div class="section-title-wrap">
+                                <h3>Account</h3>
+                            </div>
+                            <div class="setting-row cookie-row">
+                                <label for="cookie-input">.ROBLOSECURITY cookie</label>
+                                <div class="cookie-entry">
+                                    <input type="password" id="cookie-input" placeholder="paste your .ROBLOSECURITY value" autocomplete="off">
+                                    <button id="save-cookie" class="btn">Link</button>
+                                    <button id="clear-cookie" class="btn btn-ghost">Unlink</button>
+                                </div>
+                                <div class="cookie-status" id="cookie-status">account not linked</div>
+                            </div>
+                            <p class="section-desc">Stored locally only. Rustlox turns it into a one-time join ticket; the cookie never leaves this machine.</p>
+                        </div>
+
+                        <div class="settings-section hidden" data-section="graphics">
+                            <div class="section-title-wrap">
+                                <h3>Graphics</h3>
+                            </div>
+                            <div class="setting-row">
+                                <label for="fps-cap">FPS Cap</label>
+                                <div class="range-block">
+                                    <input type="range" id="fps-cap" min="0" max="240" step="10" value="60">
+                                    <div class="range-meta"><span class="range-val" id="fps-cap-val">60</span><span class="range-hint">fps · 0 = uncapped</span></div>
+                                </div>
+                            </div>
+                            <div class="setting-row">
+                                <label for="graphics-quality">Graphics Quality</label>
+                                <div class="range-block">
+                                    <input type="range" id="graphics-quality" min="0" max="10" value="5">
+                                    <div class="range-meta"><span class="range-val" id="graphics-quality-val">5</span><span class="range-hint">0-10</span></div>
+                                </div>
+                            </div>
+                            <div class="setting-row">
+                                <label for="resolution">Resolution</label>
+                                <select id="resolution">
+                                    <option value="1280x720">1280 x 720</option>
+                                    <option value="1600x900">1600 x 900</option>
+                                    <option value="1920x1080" selected>1920 x 1080</option>
+                                    <option value="2560x1440">2560 x 1440</option>
+                                    <option value="3840x2160">3840 x 2160</option>
+                                </select>
+                            </div>
+                            <div class="setting-row">
+                                <label for="fullscreen">Fullscreen</label>
+                                <label class="switch"><input type="checkbox" id="fullscreen"><span class="knob"></span></label>
+                            </div>
+                            <div class="setting-row">
+                                <label for="vsync">VSync</label>
+                                <label class="switch"><input type="checkbox" id="vsync"><span class="knob"></span></label>
                             </div>
                         </div>
-                        <div class="setting-row">
-                            <label>Resolution</label>
-                            <select id="resolution">
-                                <option value="1280x720">1280 x 720</option>
-                                <option value="1600x900">1600 x 900</option>
-                                <option value="1920x1080" selected>1920 x 1080</option>
-                                <option value="2560x1440">2560 x 1440</option>
-                                <option value="3840x2160">3840 x 2160</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>Fullscreen</label>
-                            <label class="switch"><input type="checkbox" id="fullscreen"><span class="knob"></span></label>
-                        </div>
-                        <div class="setting-row">
-                            <label>VSync</label>
-                            <label class="switch"><input type="checkbox" id="vsync"><span class="knob"></span></label>
-                        </div>
-                    </div>
 
-                    <div class="settings-section">
-                        <h3>FastFlags</h3>
-                        <p class="section-desc">Engine flags, Bloxstrap style. Presets write the same ClientAppSettings.json.</p>
-                        <div class="ff-presets">
-                            <button class="ff-preset" data-preset="performance">Performance</button>
-                            <button class="ff-preset" data-preset="quality">Quality</button>
-                            <button class="ff-preset" data-preset="null-flags">Anti-Aliasing</button>
+                        <div class="settings-section hidden" data-section="fastflags">
+                            <div class="section-title-wrap">
+                                <h3>FastFlags</h3>
+                            </div>
+                            <p class="section-desc">Engine flags, Bloxstrap style. Presets write the same ClientAppSettings.json.</p>
+                            <div class="ff-presets">
+                                <button class="ff-preset" data-preset="performance">Performance</button>
+                                <button class="ff-preset" data-preset="quality">Quality</button>
+                                <button class="ff-preset" data-preset="null-flags">Anti-Aliasing</button>
+                            </div>
+                            <div id="fastflags-list" class="fastflags-list"></div>
+                            <div class="ff-actions">
+                                <button id="apply-fflags" class="btn">Apply FastFlags</button>
+                            </div>
                         </div>
-                        <div id="fastflags-list" class="fastflags-list"></div>
-                        <div class="ff-actions">
-                            <button id="apply-fflags" class="btn">Apply FastFlags</button>
+
+                        <div class="settings-section hidden" data-section="cache">
+                            <div class="section-title-wrap">
+                                <h3>Cache</h3>
+                            </div>
+                            <div id="cache-list" class="cache-list"></div>
+                            <div class="ff-actions"><button id="clear-cache-btn" class="btn btn-secondary">Clear selected cache</button></div>
                         </div>
-                    </div>
 
-                    <div class="settings-section">
-                        <h3>Cache</h3>
-                        <div id="cache-list" class="cache-list"></div>
-                        <div class="ff-actions"><button id="clear-cache-btn" class="btn btn-secondary">Clear selected cache</button></div>
-                    </div>
-
-                    <div class="settings-section">
-                        <h3>Discord</h3>
-                        <div class="setting-row">
-                            <label>Rich Presence</label>
-                            <label class="switch"><input type="checkbox" id="discord-rpc" checked><span class="knob"></span></label>
+                        <div class="settings-section hidden" data-section="discord">
+                            <div class="section-title-wrap">
+                                <h3>Discord</h3>
+                            </div>
+                            <div class="setting-row">
+                                <label for="discord-rpc">Rich Presence</label>
+                                <label class="switch"><input type="checkbox" id="discord-rpc" checked><span class="knob"></span></label>
+                            </div>
+                            <button id="connect-discord" class="btn btn-secondary">Connect to Discord</button>
                         </div>
-                        <button id="connect-discord" class="btn btn-secondary">Connect to Discord</button>
-                    </div>
 
-                    <div class="settings-section">
-                        <h3>System</h3>
-                        <div id="system-info" class="system-info"></div>
-                        <div id="roblox-process" class="roblox-process"></div>
-                    </div>
+                        <div class="settings-section hidden" data-section="system">
+                            <div class="section-title-wrap">
+                                <h3>System</h3>
+                            </div>
+                            <div id="system-info" class="system-info"></div>
+                            <div id="roblox-process" class="roblox-process"></div>
+                        </div>
 
-                    <div class="settings-actions">
-                        <button id="save-settings" class="btn">Save Settings</button>
+                        <div class="settings-actions">
+                            <button id="save-settings" class="btn">Save Settings</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+        </div><!-- /shell -->
     </div>
 
     <!-- Play bar -->
@@ -197,7 +343,7 @@
     <div id="game-modal" class="modal hidden">
         <div class="modal-backdrop"></div>
         <div class="modal-content">
-            <button class="modal-close" id="modal-close">&times;</button>
+            <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
             <div class="modal-body">
                 <div class="modal-image"><img id="modal-thumbnail" src="" alt=""></div>
                 <div class="modal-info">
@@ -216,12 +362,49 @@
         </div>
     </div>
 
+    <!-- ACCOUNT MODAL (Shown when clicking Not Linked or user badge) -->
+    <div id="account-modal" class="modal-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="acc-title">
+        <div class="modal-backdrop"></div>
+        <div class="account-card">
+            <div class="acc-head">
+                <div class="acc-head-left">
+                    <div class="acc-avatar" id="acc-avatar-large">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="acc-title" class="acc-name">Roblox Account</h3>
+                        <div id="acc-status-tag" class="acc-status-tag">Not linked</div>
+                    </div>
+                </div>
+                <button id="account-modal-close" class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="acc-body">
+                <p class="acc-explain">Link your Roblox account securely to enable one-time join tickets, avatar synchronization, and Discord presence inside Rustlox.</p>
+                
+                <div class="acc-input-group">
+                    <label for="acc-cookie-input">.ROBLOSECURITY Cookie</label>
+                    <div class="cookie-entry">
+                        <input type="password" id="acc-cookie-input" placeholder="paste .ROBLOSECURITY value..." autocomplete="off">
+                        <button id="acc-save-cookie" class="btn">Link</button>
+                        <button id="acc-clear-cookie" class="btn btn-ghost">Unlink</button>
+                    </div>
+                    <div class="cookie-status" id="acc-cookie-status">No account linked yet.</div>
+                </div>
+
+                <div class="acc-footer-actions">
+                    <button id="acc-open-settings" class="btn btn-ghost">Open Full Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Command Palette -->
     <div id="cmd-palette" class="cmd-palette hidden">
         <div class="cmd-backdrop"></div>
         <div class="cmd-box">
             <div class="cmd-input-wrap">
-                <svg class="cmd-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg class="cmd-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="cmd-input" placeholder="Search any game..." autocomplete="off" />
                 <kbd class="cmd-kbd">ESC</kbd>
             </div>
